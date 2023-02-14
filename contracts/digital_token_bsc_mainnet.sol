@@ -167,6 +167,9 @@ contract DigitalToken is IERC721Receiver, IERC1155MetadataURI, IERC1155Receiver,
     /// @notice The calling address is not the owner successor.
     error NotOwnerSuccessorError(address _address, address ownerSuccessorAddress);
 
+    /// @notice The token address is not a valid address that can be used for minting.
+    error NotValidTokenAddressError(address _tokenAddress);
+
     /// @notice This contract is paused.
     error PausedContractError();
 
@@ -257,8 +260,6 @@ contract DigitalToken is IERC721Receiver, IERC1155MetadataURI, IERC1155Receiver,
     */
 
     constructor() payable {
-        assert(block.chainid == CHAIN_ID);
-
         assert(block.chainid == CHAIN_ID);
 
         setOwnerAddress(msg.sender);
@@ -519,7 +520,6 @@ contract DigitalToken is IERC721Receiver, IERC1155MetadataURI, IERC1155Receiver,
         }
     }
 
-    // TODO Factor out function to generate the random number
     function generateRarity(address _tokenAddress) private returns (uint256) {
         // Randomly return a rarity value.
         uint256 remaining = getRemainingMints(_tokenAddress);
@@ -631,6 +631,10 @@ contract DigitalToken is IERC721Receiver, IERC1155MetadataURI, IERC1155Receiver,
         return getRemainingMints(_tokenAddress) != 0;
     }
 
+    function isValidTokenAddress(address _tokenAddress) private pure returns (bool) {
+        return _tokenAddress != address(0);
+    }
+
     /*
         Require Functions
     */
@@ -698,6 +702,12 @@ contract DigitalToken is IERC721Receiver, IERC1155MetadataURI, IERC1155Receiver,
     function requireRemainingMints(address _tokenAddress) private view {
         if(!isRemainingMints(_tokenAddress)) {
             revert NoRemainingMintsError(_tokenAddress);
+        }
+    }
+
+    function requireValidTokenAddress(address _tokenAddress) private pure {
+        if(!isValidTokenAddress(_tokenAddress)) {
+            revert NotValidTokenAddressError(_tokenAddress);
         }
     }
 
@@ -1131,6 +1141,7 @@ contract DigitalToken is IERC721Receiver, IERC1155MetadataURI, IERC1155Receiver,
     function action_mint(address _tokenAddress, bytes memory _data) external payable {
         lock();
 
+        requireValidTokenAddress(_tokenAddress);
         requireRemainingMints(_tokenAddress);
         requireMintFee(msg.value);
 
@@ -1147,6 +1158,7 @@ contract DigitalToken is IERC721Receiver, IERC1155MetadataURI, IERC1155Receiver,
         lock();
 
         requireOperatorAddress(msg.sender);
+        requireValidTokenAddress(_tokenAddress);
         requireRemainingMints(_tokenAddress);
         requireMintFee(msg.value);
         
@@ -1289,6 +1301,13 @@ contract DigitalToken is IERC721Receiver, IERC1155MetadataURI, IERC1155Receiver,
     /// @return Whether there are more remaining NFTs to be minted for the token address.
     function query_isRemainingMints(address _tokenAddress) external view returns (bool) {
         return isRemainingMints(_tokenAddress);
+    }
+
+    /// @notice Returns whether the token address is a valid address that can be used for minting.
+    /// @param _tokenAddress The address where the token's contract lives.
+    /// @return Whether the token address is a valid address that can be used for minting.
+    function query_isValidTokenAddress(address _tokenAddress) external pure returns (bool) {
+        return isValidTokenAddress(_tokenAddress);
     }
 
     /*
